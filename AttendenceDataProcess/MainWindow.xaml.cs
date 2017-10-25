@@ -25,6 +25,9 @@ using AttendantData;
 using System.Threading;
 using Microsoft.Win32;
 using System.IO;
+using CsvHelper;
+using AttendenceDataProcess.Data;
+using CsvHelper.Configuration;
 
 namespace AttendenceDataProcess
 {
@@ -458,118 +461,50 @@ namespace AttendenceDataProcess
 		
 		private void Main_CreateExcel_Click(object sender, RoutedEventArgs e)
 		{
-			try
-			{
-				Excel.Application appx = new Excel.Application();
-			}
-			catch (Exception)
-			{
-
-				throw;
-			}
-			Excel.Application app = new Excel.Application();
-			Excel.Workbooks workBooks = app.Workbooks;
-			Excel.Workbook workBook = workBooks.Add(true);
-			Excel.Worksheet workSheet = workBook.Sheets.Item["Sheet1"];
-
-			app.Visible = true;
-
-			workSheet.Name = string.Format("第{0}周", SchoolWeek.SelectedIndex + 1);
-			Excel.Range TitleRange = workSheet.Range[workSheet.Cells[1][1], workSheet.Cells[9][1]];
-			TitleRange.Merge();
-			TitleRange.Value = string.Format("遥感信息工程学院第{0}周考勤统计", SchoolWeek.SelectedIndex + 1);
-			TitleRange.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
-
-			workSheet.Cells[1][2] = "年级";
-			workSheet.Cells[2][2] = "班级";
-			workSheet.Cells[3][2] = "姓名";
-			workSheet.Cells[4][2] = "缺课周次";
-			workSheet.Cells[5][2] = "缺课时段";
-			workSheet.Cells[6][2] = "缺课课程";
-			workSheet.Cells[7][2] = "状态";
-			workSheet.Cells[8][2] = "班级出勤率";
-			workSheet.Cells[9][2] = "年级出勤率";
-
-			TitleRange = workSheet.Range[workSheet.Cells[1][2], workSheet.Cells[9][2]];
-			TitleRange.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
-			TitleRange.VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
+            List<StatisticsFileModel> statistics = new List<StatisticsFileModel>();
+            // 读取列表
+            foreach (var gGrade in GradeList)
+            {
+                foreach (var cClass in gGrade.ClassList)
+                {
+                    foreach (var absent in cClass.AbsentList)
+                    {
+                        statistics.Add(new StatisticsFileModel()
+                        {
+                            StudentID = absent.StudentID,
+                            StudentName = absent.StudentName,
+                            ClassName = cClass.ClassName,
+                            GradeName = gGrade.GradeName,
+                            WeekIndex = absent.AbsenceWeekIndex,
+                            CourseIndex = absent.AbsenceClassIndex,
+                            CourseName = absent.Course.CourseName,
+                            Status = absent.AbsentStatusString
+                        });
+                    }
+                }
+            }
+            // 写入CSV文件
+            try
+            {
+                using (FileStream fs = new FileStream($"遥感信息工程学院第{SchoolWeek.SelectedIndex + 1}周考勤统计.csv", FileMode.Create))
+                {
+                    using (StreamWriter sw = new StreamWriter(fs))
+                    {
+                        using (CsvWriter csv = new CsvWriter(sw))
+                        {
+                            // 写头
+                            csv.WriteHeader<StatisticsFileModel>();
+                            csv.NextRecord();
+                            csv.WriteRecords(statistics);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
 			
-			((Excel.Range)workSheet.Columns["H:I", Type.Missing]).AutoFit();
-
-			int GradeRowStart = 3, GradeRowEnd = 3, ClassRowStart = 3, ClassRowEnd = 3;
-			foreach (Grade gGrade in GradeList)
-			{
-				GradeRowEnd = GradeRowStart;
-				//workSheet.Cells[GradeRowStart][1] = gGrade.GradeName;
-				foreach (Class cClass in gGrade.ClassList)
-				{
-					//workSheet.Cells[ClassRowStart][2] = cClass.ClassName;
-					ClassRowEnd = ClassRowStart;
-					//if (cClass.AbsentList.Count > 0 )
-					//{
-					if (cClass.AbsentList.Count > 0)
-					{
-						foreach (Absent absent in cClass.AbsentList)
-						{
-							workSheet.Cells[3][ClassRowEnd] = absent.StudentName;           //填写缺勤者 姓名
-							workSheet.Cells[4][ClassRowEnd] = absent.AbsenceWeekIndex;      //填写缺勤者 缺勤周次
-							workSheet.Cells[5][ClassRowEnd] = absent.AbsenceClassIndex;     //填写缺勤者 缺勤课次
-							workSheet.Cells[6][ClassRowEnd] = absent.Course.CourseName;     //填写缺勤者 缺勤课程
-							workSheet.Cells[7][ClassRowEnd] = absent.AbsentStatusString;    //填写缺勤者 缺勤状态，旷课、请假、迟到
-							ClassRowEnd++;
-						}
-						ClassRowEnd--;
-					}
-					//填写班级号
-					Excel.Range range = workSheet.Range[workSheet.Cells[2][ClassRowStart], workSheet.Cells[2][ClassRowEnd]];
-					range.ClearContents();
-					range.Merge();
-					range.Value = cClass.ClassName;
-					range.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
-					range.VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
-
-					//填写班级出勤率
-					range = workSheet.Range[workSheet.Cells[8][ClassRowStart], workSheet.Cells[8][ClassRowEnd]];
-					range.ClearContents();
-					range.Merge();
-					range.Value = string.Format("{0:P2}", cClass.AttendentRate);
-					range.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
-					range.VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
-					//}
-					//else
-					//{
-					//	workSheet.Cells[ClassRowStart][8] = string.Format("{0:P2}", cClass.AttendentRate);
-					//}
-					ClassRowStart = ClassRowEnd + 1;
-				}
-				GradeRowEnd = ClassRowEnd;
-				
-				//填写年级号
-				Excel.Range GradeRange = workSheet.Range[workSheet.Cells[1][GradeRowStart], workSheet.Cells[1][GradeRowEnd]];
-				GradeRange.ClearContents();
-				GradeRange.Select();
-				GradeRange.Merge();
-				GradeRange.Value = gGrade.GradeName;
-				GradeRange.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
-				GradeRange.VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
-				//填写年级出勤率
-				GradeRange = workSheet.Range[workSheet.Cells[9][GradeRowStart], workSheet.Cells[9][GradeRowEnd]];
-				GradeRange.ClearContents();
-				GradeRange.Merge();
-				GradeRange.Value = string.Format("{0:P2}", gGrade.AttendentRate);
-				//GradeRange.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
-				//GradeRange.VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
-
-				GradeRowStart = GradeRowEnd + 1;
-
-			}
-
-			((Excel.Range)workSheet.Columns["E:F", Type.Missing]).AutoFit();
-			//workBook.Close(null, null, null);
-			//workBooks.Close();
-			//app.Quit();
-			System.Runtime.InteropServices.Marshal.ReleaseComObject(app);
-			app = null;
 		}
 
 		//Setting标签页 事件相应函数
@@ -1104,4 +1039,12 @@ namespace AttendenceDataProcess
 			((Student)Setting_MemberList.SelectedItem).CourseList.Add((Course)Setting_MemberChechingInCourse_ChooseList.SelectedItem);
 		}
 	}
+
+    public sealed class StatisticsMap : ClassMap<StatisticsFileModel>
+    {
+        public StatisticsMap()
+        {
+
+        }
+    }
 }

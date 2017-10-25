@@ -45,6 +45,9 @@
     <StartupObject>AttendenceDataProcess.App</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="CsvHelper, Version=4.0.0.0, Culture=neutral, PublicKeyToken=8c4959082be5c823, processorArchitecture=MSIL">
+      <HintPath>..\packages\CsvHelper.4.0.2\lib\net45\CsvHelper.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
@@ -65,6 +68,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Data\StatisticsFileModel.cs" />
     <Compile Include="SetSchoolStartDate.xaml.cs">
       <DependentUpon>SetSchoolStartDate.xaml</DependentUpon>
     </Compile>
@@ -104,6 +108,7 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
